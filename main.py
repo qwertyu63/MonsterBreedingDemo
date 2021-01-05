@@ -10,7 +10,7 @@ class monster(object):
         self.id = randint(100000,999999)
         self.sex = sex
         self.name = name
-        self.rest = 1
+        self.timestamp = time()
     def __str__(self):
         if self.sex==0:
             icon = "M"
@@ -27,13 +27,13 @@ class monster(object):
         else:
             icon = "Intersex"
         return """%s (%s, %i months)
-Force: %i (%i, %i, %i)
-Speed: %i (%i, %i, %i)
-Brain: %i (%i, %i, %i)
-Charm: %i (%i, %i, %i)"""%(self.name,icon,self.age,self.stats[0],self.genes[0][0],self.genes[0][1],self.genes[0][2],self.stats[1],self.genes[1][0],self.genes[1][1],self.genes[1][2],self.stats[2],self.genes[2][0],self.genes[2][1],self.genes[2][2],self.stats[3],self.genes[3][0],self.genes[3][1],self.genes[3][2])
+Force: %i (%i, %i, %i, +%i)
+Speed: %i (%i, %i, %i, +%i)
+Brain: %i (%i, %i, %i, +%i)
+Charm: %i (%i, %i, %i, +%i)"""%(self.name,icon,self.age,self.stats[0],self.genes[0][0],self.genes[0][1],self.genes[0][2],self.skills[0],self.stats[1],self.genes[1][0],self.genes[1][1],self.genes[1][2],self.skills[1],self.stats[2],self.genes[2][0],self.genes[2][1],self.genes[2][2],self.skills[2],self.stats[3],self.genes[3][0],self.genes[3][1],self.genes[3][2],self.skills[3])
     def passtime(self):
+        self.genstats()
         self.age += 1
-        self.rest = 1
     def genstats(self):
         self.stats=[0,0,0,0]
         for i in range(0,4):
@@ -43,11 +43,20 @@ Charm: %i (%i, %i, %i)"""%(self.name,icon,self.age,self.stats[0],self.genes[0][0
         newname = input("> ")
         if newname != "":
             self.name=newname.capitalize()
+    def train(self,boost):
+        for i in range(0,4):
+            self.skills[i]+=boost[i]
+            if self.skills[i]>3:
+                self.skills=3
 
 from random import randint
+from time import time
+
+def sortmon(e):
+    return e.timestamp
 
 def breed(mom, dad, sex=None):
-    print("%s and %s are trying to make a new monster."%(mom.name,dad.name))
+    print("\n%s and %s are trying to make a new monster."%(mom.name,dad.name))
     penalty, line = inbreeding(mom,dad)
     parents = [mom.id,dad.id]
     testpass = alert(mom,dad,penalty)
@@ -62,7 +71,9 @@ def breed(mom, dad, sex=None):
             penalty -= 1
         if sex == None:
             sex = randint(0,1)
-        return monster(genes,parents,line,sex,namegen())
+        newname = namegen()
+        print("Their offspring is named %s."%(newname))
+        return monster(genes,parents,line,sex,newname)
     else:
         return None
 
@@ -77,28 +88,32 @@ def alert(mom,dad,penalty):
     if mom.sex==dad.sex and mom.sex!=2:
         print("%s and %s are the same sex; they can't mate."%(mom.name,dad.name))
         alert=True
-    if penalty==2:
+    if penalty==2 and alert==False:
         print("%s and %s are closely related.\nTheir offspring will be much weaker than normal."%(mom.name,dad.name))
-    if penalty==1:
+    if penalty==1 and alert==False:
         print("%s and %s are related.\nTheir offspring will be weaker than normal."%(mom.name,dad.name))
     return alert
 
 def inbreeding(mom, dad):
     penalty = 0
-    baseline = mom.parents+dad.parents
-    idlist = [mom.id,dad.id]
-    baseline[:] = [x for x in baseline if x != 0]
-    line=[]
-    for i in range(0,len(baseline)):
-        if baseline[i] in line:
-            penalty=2
-            break
-        else:
-            line.append(baseline[i])
-    for i in range(0,1):
-        if idlist[i] in line:
-            penalty=2
-            break
+    line = mom.parents+dad.parents
+    line = list(set(line))
+    try:
+        line.remove(0)
+    except ValueError:
+        pass
+    line.sort()
+    print(line)
+    if mom.parents[0] in dad.parents:
+        if mom.parents[0] != 0:
+            penalty = 2
+    if mom.parents[1] in dad.parents:
+        if mom.parents[1] != 0:
+            penalty = 2
+    if mom.id in dad.parents:
+        penalty=2
+    if dad.id in mom.parents:
+        penalty=2
     if penalty==0:
         oldline = mom.line+dad.line+line
         oldline[:] = [x for x in oldline if x != 0]
@@ -112,6 +127,7 @@ def inbreeding(mom, dad):
     return (penalty, line)
 
 def displaybox(box):
+    box.sort(key=sortmon)
     print()
     for i in range(0,len(box)):
         print(str(i+1)+": "+str(box[i]))
@@ -139,24 +155,20 @@ def randomgene():
             genes[i][j]=randint(1,3)
     return genes
 
-def newmonth(box):
-    for i in range(0,len(box)):
-        box[i].passtime()
-
 def inspect(box):
     while True:
         displaybox(box)
         print("Which monster do you want to inspect?\nInput 0 to exit or N to enter rename mode.")
         lookup = input("> ")
         print(lookup)
-        if lookup == "0":
+        if lookup == "0" or lookup == "":
             break
         elif lookup == "N" or lookup == "n":
             while True:
                 displaybox(box)
                 print("Which monster do you want to rename?\nInput 0 to cancel.")
                 lookup = input("> ")
-                if lookup == "0":
+                if lookup == "0" or lookup == "":
                     break
                 else:
                     try:
@@ -175,17 +187,120 @@ def inspect(box):
                 print("You don't have that many monsters!")
 
 def checkbays(box,bays):
-    print
+    while True:
+        displaybox(box)
+        for i in range(0,len(bays)):
+            bayid=i+1
+            print("Bay %i: "%(bayid),end="")
+            if len(bays[i]) == 0:
+                print("Empty.")
+            elif len(bays[i]) == 1:
+                print(bays[i][0].name)
+            else:
+                print(bays[i][0].name+", "+bays[i][1].name)
+        print("\nWhich bay do you want to use?\nInput 0 to exit.")
+        targetbay = input("> ")
+        if targetbay == "0" or targetbay == "":
+            break
+        else:
+            print()
+            try:
+                bayedit(bays[int(targetbay)-1],box)
+            except ValueError:
+                print("A number, please.")
+            except IndexError:
+                print("You don't have that many bays!")
+
+def bayedit(bay,box):
+    while True:
+        if len(bay) == 2:
+            print("\nIn Bay:",end="")
+            displaybox(bay)
+            print("That bay is already full.\nInput 1 or 2 to remove that monster.\nAny other input cancels.")
+            target = input("> ")
+            if target == "1":
+                print("\n%s has been removed from the bay."%(bay[0].name))
+                box.append(bay.pop(0))
+            elif target == "2":
+                print("\n%s has been removed from the bay."%(bay[1].name))
+                box.append(bay.pop(1))
+            else:
+                return
+        else:
+            if len(bay) == 1:
+                print("In Bay: "+str(bay[0]))
+            print("In Box:",end="")
+            displaybox(box)
+            print("Which monster do you want to add to the bay?\nInput 0 to cancel.")
+            if len(bay)==1:
+                print("Input R to remove %s from the bay."%(bay[0].name))
+            target = input("> ")
+            if target == "0" or target == "":
+                return
+            elif (target == "R" or target == "r") and len(bay) == 1:
+                print("\n%s has been removed from the bay."%(bay[0].name))
+                box.append(bay.pop(0))
+            else:
+                try:
+                    bay.append(box.pop(int(target)-1))
+                    print("\n%s is now in the bay."%(bay[-1].name))
+                except ValueError:
+                    print("A number, please.")
+                except IndexError:
+                    print("You don't have that many monsters!")
+
+def trainbays(box,train):
+    while True:
+        names = ["Empty","Empty","Empty","Empty"]
+        for i in range(0,4):
+            if train[i] != None:
+                names[i]=train[i].name
+        print("""
+Training Bays:
+Force (1): %s
+Speed (2): %s
+Brain (3): %s
+Charm (4): %s"""%(names[0],names[1],names[2],names[3]))
+        displaybox(box)
+        print("Which bay do you want to use?\nInput 0 to exit.")
+        target = input("> ")
+        valid = ["1","2","3","4"]
+        if target  or target == "":
+            break
+        elif target in valid:
+            num = int(target)-1
+            if train[num]==None:
+                hold = getmonster(box)
+                if hold != None:
+                    train[num] = hold
+                    print("%s is ready to train."%(train[num].name))
+            else:
+                box.append(train[num])
+                print("%s has been returned to the box."%(train[num].name))
+                train[num] = None
+
+def getmonster(box):
     displaybox(box)
-    for i in range(0,len(bays)):
-        print("Bay %i")
+    print("Which monster do you want to put in?\nInput 0 to cancel.")
+    target = input("> ")
+    if target == "0" or target == "":
+        return None
+    else:
+        try:
+            hold = box.pop(int(target)-1)
+            return hold
+        except ValueError:
+            print("A number, please.")
+        except IndexError:
+            print("You don't have that many monsters!")
 
 box = []
 bays = [[],[]]
-box.append(monster(randomgene(),[0,0],[0],0,namegen(),2))
-box.append(monster(randomgene(),[0,0],[0],1,namegen(),2))
-box.append(monster(randomgene(),[0,0],[0],0,namegen(),2))
-box.append(monster(randomgene(),[0,0],[0],1,namegen(),2))
+train = [None,None,None,None]
+box.append(monster(randomgene(),[0,0],[],0,namegen(),2))
+box.append(monster(randomgene(),[0,0],[],1,namegen(),2))
+box.append(monster(randomgene(),[0,0],[],0,namegen(),2))
+box.append(monster(randomgene(),[0,0],[],1,namegen(),2))
 
 print("""Monster Breeding Game Demo
 by Nicholas Fletcher""")
@@ -195,8 +310,7 @@ while True:
     print("""Select your action:
 1: Inspect a Monster closely.
 2: Send a Monster to a Breeding Bay.
-3: Send a Monster to a Training Field.
-4: Send a Monster to an Event.
+3: Send a Monster to a Training Bay.
 5: Go to the Market.
 6: End the Month.""")
     command = input("> ")
@@ -204,7 +318,27 @@ while True:
         inspect(box)
     if command == "2":
         checkbays(box,bays)
+    if command == "3":
+        trainbays(box,train)
     if command == "5":
-        box.append(monster(randomgene(),[0,0],[0],0,namegen(),2))
+        box.append(monster(randomgene(),[0,0],[],0,namegen(),2))
         print("\nYou bought a new monster.\nTheir name is %s."%(box[-1].name))
-
+    if command == "6" or command == "0":
+        for i in range(0,len(bays)):
+            baby = None
+            if len(bays[i])==2:
+                baby = breed(bays[i][0],bays[i][1])
+            while len(bays[i]) != 0:
+                box.append(bays[i].pop(0))
+            if baby != None:
+                    box.append(baby)
+        for i in range(0,len(train)):
+            bonus=[0,0,0,0]
+            bonus[i]=1
+            if train[i]!=None:
+                train[i].train(bonus)
+                print("%s got more skilled."%(train[i].name))
+                box.append(train[i])
+                train[i]=None
+        for i in range(0,len(box)):
+            box[i].passtime()
