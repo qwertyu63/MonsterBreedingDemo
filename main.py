@@ -1,5 +1,5 @@
 class monster(object):
-    def __init__(self, genes, parents, line, sex, name, age=0):
+    def __init__(self, genes, parents, line, sex, name, sprite=None, age=0):
         self.age = age
         self.genes = genes
         self.stats = [0,0,0,0]
@@ -10,6 +10,9 @@ class monster(object):
         self.id = randint(100000,999999)
         self.sex = sex
         self.name = name
+        self.sprite=sprite
+        if self.sprite == None:
+            self.sprite = [randint(1,3),randint(1,3)]
         self.timestamp = time()
     def __str__(self):
         if self.sex==0:
@@ -18,7 +21,7 @@ class monster(object):
             icon = "F"
         else:
             icon = "I"
-        return """%s (%s %i) F%i S%i B%i C%i"""%(self.name,icon,self.age,self.stats[0],self.stats[1],self.stats[2],self.stats[3])
+        return "%s (%s %i) F%i S%i B%i C%i"%(self.name,icon,self.age,self.stats[0],self.stats[1],self.stats[2],self.stats[3])
     def fullprint(self):
         if self.sex==0:
             icon = "Male"
@@ -116,7 +119,6 @@ def inbreeding(mom, dad):
         penalty=2
     if penalty==0:
         oldline = mom.line+dad.line+line
-        oldline[:] = [x for x in oldline if x != 0]
         cleanline = []
         for i in range(0,len(oldline)):
             if oldline[i] in cleanline:
@@ -265,7 +267,7 @@ Charm (4): %s"""%(names[0],names[1],names[2],names[3]))
         print("Which bay do you want to use?\nInput 0 to exit.")
         target = input("> ")
         valid = ["1","2","3","4"]
-        if target  or target == "":
+        if target in ("0",""):
             break
         elif target in valid:
             num = int(target)-1
@@ -294,13 +296,54 @@ def getmonster(box):
         except IndexError:
             print("You don't have that many monsters!")
 
+def exhibit(box,stage,stagetarget):
+    while True:
+        if len(stage) == 2:
+            print("\nOn Stage:",end="")
+            displaybox(stage)
+            print("The stage is already full.\nInput 1 or 2 to remove that monster.\nAny other input cancels.")
+            target = input("> ")
+            if target == "1":
+                print("\n%s has been removed from the stage."%(stage[0].name))
+                box.append(stage.pop(0))
+            elif target == "2":
+                print("\n%s has been removed from the stage."%(stage[1].name))
+                box.append(stage.pop(1))
+            else:
+                return
+        else:
+            if len(stage) == 1:
+                print("\nOn Stage: "+str(stage[0]))
+            print("\nIn Box:",end="")
+            displaybox(box)
+            print("Which monster do you want to add to the stage?\nInput 0 to cancel.")
+            if len(stage)==1:
+                print("Input R to remove %s from the stage."%(stage[0].name))
+            target = input("> ")
+            if target == "0" or target == "":
+                return
+            elif (target == "R" or target == "r") and len(stage) == 1:
+                print("\n%s has been removed from the stage."%(stage[0].name))
+                box.append(stage.pop(0))
+            else:
+                try:
+                    stage.append(box.pop(int(target)-1))
+                    print("\n%s is now on the stage."%(stage[-1].name))
+                except ValueError:
+                    print("A number, please.")
+                except IndexError:
+                    print("You don't have that many monsters!")
+
 box = []
 bays = [[],[]]
 train = [None,None,None,None]
-box.append(monster(randomgene(),[0,0],[],0,namegen(),2))
-box.append(monster(randomgene(),[0,0],[],1,namegen(),2))
-box.append(monster(randomgene(),[0,0],[],0,namegen(),2))
-box.append(monster(randomgene(),[0,0],[],1,namegen(),2))
+stage = []
+stagetarget = [randint(0,3)]
+box.append(monster(randomgene(),[0,0],[],0,namegen(),age=2))
+box.append(monster(randomgene(),[0,0],[],1,namegen(),age=2))
+box.append(monster(randomgene(),[0,0],[],0,namegen(),age=2))
+box.append(monster(randomgene(),[0,0],[],1,namegen(),age=2))
+statname=["Force","Speed","Brain","Charm"]
 
 print("""Monster Breeding Game Demo
 by Nicholas Fletcher""")
@@ -308,22 +351,26 @@ by Nicholas Fletcher""")
 while True:
     displaybox(box)
     print("""Select your action:
-1: Inspect a Monster closely.
-2: Send a Monster to a Breeding Bay.
-3: Send a Monster to a Training Bay.
+1: Inspect a Monster.
+2: Visit the Breeding Bays.
+3: Visit the Training Bays.
+4: Visit the Exhibition Stage.
 5: Go to the Market.
 6: End the Month.""")
     command = input("> ")
     if command == "1":
         inspect(box)
-    if command == "2":
+    elif command == "2":
         checkbays(box,bays)
-    if command == "3":
+    elif command == "3":
         trainbays(box,train)
-    if command == "5":
+    elif command == "4":
+        exhibit(box,stage,stagetarget)
+    elif command == "5":
         box.append(monster(randomgene(),[0,0],[],0,namegen(),2))
         print("\nYou bought a new monster.\nTheir name is %s."%(box[-1].name))
-    if command == "6" or command == "0":
+    elif command in ("6","0"):
+        print()
         for i in range(0,len(bays)):
             baby = None
             if len(bays[i])==2:
@@ -337,8 +384,11 @@ while True:
             bonus[i]=1
             if train[i]!=None:
                 train[i].train(bonus)
-                print("%s got more skilled."%(train[i].name))
+                print("%s's %s improved."%(train[i].name,statname[i]))
                 box.append(train[i])
                 train[i]=None
+        for i in range(0,len(stage)):
+            box.append(stage.pop())
         for i in range(0,len(box)):
             box[i].passtime()
+        stagetarget = [randint(0,3)]
