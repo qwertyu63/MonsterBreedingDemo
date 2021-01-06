@@ -106,6 +106,12 @@ Core Genes: %s-%s-%s-%s"""%(self.name,icon,self.age,self.stats[0],self.genes[0][
         self.skills=save[20:24]
         self.age=save[24]
         self.genstats()
+    def mutate(self):
+        for i in range(0,3):
+            self.genes[i][2]=randint(0,5)
+        if randint(0,9)==9:
+            self.genes[5][0]=randint(1000,1009)
+
 
 from random import randint, shuffle
 from time import time
@@ -376,6 +382,7 @@ box = []
 bays = [[],[]]
 train = [[],[],[],[]]
 stage = []
+pool = None
 stagetarget = randint(0,3)
 unlock = False
 statname=["Force","Speed","Brain","Charm"]
@@ -417,6 +424,7 @@ else:
     box.append(monster(randomgene(1),namegen(),age=2))
 
 while True:
+    monstercount = len(box)
     displaybox(box)
     print("""Money: $%i
     
@@ -426,8 +434,8 @@ Select your action:
 3: Visit the Exhibition Stage (%s).
 4: Visit the Training Fields.
 5: Visit the Market. [WIP]
-6: Visit the Transformation Pool. [WIP]
-6: End the Month."""%(money,statname[stagetarget]))
+6: Visit the Mystery Pool.
+0: End the Month."""%(money,statname[stagetarget]))
     if save == True:
         print("R: Record your progress.\nYou can only save right at the start of a month.")
     command = input("> ")
@@ -443,8 +451,17 @@ Select your action:
     elif command == "4":
         save = False
         checkbays(box,train,label=True)
-    elif command in ("6","0"):
-        print()
+    elif command == "6":
+        save = False
+        if pool != None:
+            print("\nYou already have a monster in the pool.\nThey will return when the month ends.")
+        elif money < 10:
+            print("\nSending a monster into the Mystery Pool costs $10.\nYou can't afford that.")
+        else:
+            pool = getmonster(box,"Which monster do you want to send into the pool?\nIt will cost $10.\nInput 0 to cancel.")
+            if pool != None:
+                money-=10
+    elif command in ("0"):
         save = True
         for i in range(0,len(bays)):
             baby = None
@@ -453,7 +470,7 @@ Select your action:
             while len(bays[i]) != 0:
                 box.append(bays[i].pop(0))
             if baby != None:
-                    box.append(baby)
+                box.append(baby)
         for i in range(0,len(train)):
             if len(train[i]) != 0:
                 for j in train[i]:
@@ -465,11 +482,16 @@ Select your action:
             runexhibit(stage,stagetarget)
             box+=stage
             stage=[]
+        if pool!=None:
+            print("\n%s returns from the Mystery Pool."%(pool.name))
+            pool.mutate()
+            box.append(pool)
+            pool=None
         for i in range(0,len(box)):
             box[i].passtime()
         stagetarget = randint(0,3)
     elif command == "9":
-        money+=99
+        money=100
     elif command in ("R","r") and save == True: #WIP
         with shelve.open('box') as savefile:
             for i in range(0,len(box)):
