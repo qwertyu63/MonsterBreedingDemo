@@ -1,16 +1,12 @@
 class monster(object):
-    def __init__(self, genes, sex, name,age=0):
+    def __init__(self, genes, name, age=0):
         self.color = None
         self.age = age
         self.genes = genes
         self.stats = [0,0,0,0]
         self.skills = [0,0,0,0]
-        self.sex = sex
+        self.sex = self.genes[5][0] % 2
         self.name = name
-        if genes[4][0]==genes[4][2]:
-            self.color = genes[4][0]
-        else:
-            self.color = genes[4][1]
         self.genstats()
         self.timestamp = time()
     def __str__(self):
@@ -24,9 +20,9 @@ class monster(object):
             cicon = "r"
         elif self.color==1:
             cicon = "g"
-        elif self.color==1:
+        elif self.color==2:
             cicon = "b"
-        else:
+        elif self.color==3:
             cicon = "y"
         return "%s (%s%s) F%i S%i B%i C%i"%(self.name,cicon,icon,self.stats[0],self.stats[1],self.stats[2],self.stats[3])
     def passtime(self):
@@ -36,7 +32,14 @@ class monster(object):
         self.stats=[0,0,0,0]
         for i in range(0,4):
             self.stats[i]=sum(self.genes[i])+self.skills[i]
+        if self.genes[4][0]==self.genes[4][2]:
+            self.color = self.genes[4][0]
+        else:
+            self.color = self.genes[4][1]
         self.stats[self.color]+=1
+        self.sex = self.genes[5][0] % 2
+        if self.genes[5][0] == 1000:
+            self.sex=2
     def rename(self):
         print("\nWhat should %s's new name be?\nLeave blank to cancel."%(self.name))
         newname = input("> ")
@@ -44,7 +47,8 @@ class monster(object):
             self.name=newname.capitalize()
     def train(self,boost):
         for i in range(0,4):
-            self.skills[i]+=boost[i]
+            if boost == i:
+                self.skills[i]+=1
             limit = 4 if self.color==i else 3
             if self.skills[i]>limit:
                 self.skills=limit
@@ -59,24 +63,24 @@ class monster(object):
             cicon = "Red; +1 Force"
         elif self.color==1:
             cicon = "Green; +1 Speed"
-        elif self.color==1:
+        elif self.color==2:
             cicon = "Blue; +1 Brain"
-        else:
+        elif self.color==3:
             cicon = "Yellow; +1 Charm"
         colormark=[0,0,0,0]
         colormark[self.color]=1
         colorgene=colorgenes(self.genes[4])
         return """%s:
 %s (%s months)
-Force: %i (%i%i%i)
-Speed: %i (%i%i%i)
-Brain: %i (%i%i%i)
-Charm: %i (%i%i%i)
+Force: %i (%i%i%i) +%i
+Speed: %i (%i%i%i) +%i
+Brain: %i (%i%i%i) +%i
+Charm: %i (%i%i%i) +%i
 Color: %s (%s)
-Core Genes: %s-%s-%s-%s
-        """%(self.name,icon,self.age,self.stats[0],self.genes[0][0],self.genes[0][1],self.genes[0][2],self.stats[1],self.genes[1][0],self.genes[1][1],self.genes[1][2],self.stats[2],self.genes[2][0],self.genes[2][1],self.genes[2][2],self.stats[3],self.genes[3][0],self.genes[3][1],self.genes[3][2],cicon,colorgene,self.genes[5][0],self.genes[5][1],self.genes[5][2],self.genes[5][3])
+Core Genes: %s-%s-%s-%s"""%(self.name,icon,self.age,self.stats[0],self.genes[0][0],self.genes[0][1],self.genes[0][2],self.skills[0],self.stats[1],self.genes[1][0],self.genes[1][1],self.genes[1][2],self.skills[1],self.stats[2],self.genes[2][0],self.genes[2][1],self.genes[2][2],self.skills[2],self.stats[3],self.genes[3][0],self.genes[3][1],self.genes[3][2],self.skills[3],cicon,colorgene,self.genes[5][0],self.genes[5][1],self.genes[5][2],self.genes[5][3])
     def savebuild(self):
-        save = self.genes[0]
+        save = [self.name]
+        save += self.genes[0]
         save += self.genes[1]
         save += self.genes[2]
         save += self.genes[3]
@@ -84,27 +88,23 @@ Core Genes: %s-%s-%s-%s
         save += self.genes[5]
         save += self.skills
         save.append(self.age)
-        save.append(self.sex)
-        save.append(self.name)
         for i in range(0,len(save)):
             save[i]=str(save[i])
         save=tuple(save)
         return save
     def saveload(self, save):
         save = list(save)
-        for i in range(0,len(save)):
-            if i != 25:
-                save[i]=int(save[i])
-        self.genes[0]=save[0:3]
-        self.genes[1]=save[3:6]
-        self.genes[2]=save[6:9]
-        self.genes[3]=save[9:12]
-        self.genes[4]=save[12:15]
-        self.genes[4]=save[19:19]
-        self.skills=save[19:23]
-        self.age=save[23]
-        self.sex=save[24]
-        self.name=save[25]
+        for i in range(1,len(save)):
+            save[i]=int(save[i])
+        self.name=save[0]
+        self.genes[0]=save[1:4]
+        self.genes[1]=save[4:7]
+        self.genes[2]=save[7:10]
+        self.genes[3]=save[10:13]
+        self.genes[4]=save[13:16]
+        self.genes[5]=save[16:20]
+        self.skills=save[20:24]
+        self.age=save[24]
         self.genstats()
 
 from random import randint, shuffle
@@ -147,11 +147,9 @@ def breed(mom, dad, sex=None):
         while penalty != 0:
             genes[randint(0,3)][randint(0,2)]=0
             penalty -= 1
-        if sex == None:
-            sex = randint(0,1)
         newname = namegen()
         print("Their offspring is named %s."%(newname))
-        return monster(genes,sex,newname)
+        return monster(genes,newname)
     else:
         return None
 
@@ -201,16 +199,21 @@ def namegen():
         rolls-=1
     return name.capitalize()
 
-def randomgene():
+def randomgene(sex=None):
     genes=[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0,0]]
     for i in range(0,4):
         for j in range(0,3):
             genes[i][j]=randint(1,3)
     genes[4][0]=randint(0,3)
-    genes[4][1]=genes[4][0]
-    genes[4][2]=genes[4][0]
+    genes[4][1]=randint(0,3)
+    genes[4][2]=genes[4][randint(0,1)]
     for i in range(0,4):
         genes[5][i]=randint(100,999)
+    if sex != None and genes[5][0] % 2 == sex:
+        if genes[5][0] == 999:
+            genes[5][0]=100
+        else:
+            genes[5][0]+=1
     return genes
 
 def inspect(box):
@@ -232,26 +235,43 @@ def inspect(box):
             print(lookup.fullprint())
             box.append(lookup)
 
-def checkbays(box,bays):
+def checkbays(box,bays,sell=False,label=False):
     while True:
         displaybox(box)
         for i in range(0,len(bays)):
             bayid=i+1
-            print("Bay %i: "%(bayid),end="")
+            if label:
+                print("Field %i (%s): "%(bayid,statname[i]),end="")
+                name="field"
+            else:
+                print("Bay %i: "%(bayid),end="")
+                name="bay"
             if len(bays[i]) == 0:
                 print("Empty.")
             elif len(bays[i]) == 1:
                 print(bays[i][0].name)
             else:
                 print(bays[i][0].name+", "+bays[i][1].name)
-        print("\nWhich bay do you want to use?\nInput 0 to exit.")
+        print("\nWhich %s do you want to use?\nInput 0 to exit."%(name))
+        if sell == True:
+            print("Input R to buy a new bay for $%s."%(len(bays)*10))
         targetbay = input("> ")
         if targetbay in ("0",""):
             break
+        elif targetbay in ("r","R") and sell == True:
+            global money
+            if money > (len(bays)*10)-1:
+                money -= len(bays)*10
+                bays.append([])
+                print("Your new bay is constructed.")
+            else:
+                print("You can't afford it.")
         else:
             print()
             try:
-                bayedit(bays[int(targetbay)-1],box)
+                fish = False
+                while not fish:
+                    fish = bayedit(bays[int(targetbay)-1],box,name)
             except ValueError:
                 print("A number, please.")
             except IndexError:
@@ -264,8 +284,8 @@ def bayedit(bay,box,name="bay"):
             phrase = "on the stage"
             label = "On Stage"
         else:
-            phrase = "in the bay"
-            label = "In Bay"
+            phrase = "in the %s"%(name)
+            label = "In %s"%(name.capitalize())
         if len(bay) == 2:
             bay, eject = fullbay(bay,name)
             if eject != None:
@@ -285,8 +305,7 @@ def bayedit(bay,box,name="bay"):
                 bay.append(output)
             elif output == None:
                 flag = True
-        if name == "stage":
-            return flag
+        return flag
 
 def getmonster(box,message="Which monster do you want?\nInput 0 to cancel.",drop=False,rename=False):
     displaybox(box)
@@ -351,7 +370,7 @@ def runexhibit(stage, stagetarget):
 
 box = []
 bays = [[],[]]
-train = [None,None,None,None]
+train = [[],[],[],[]]
 stage = []
 stagetarget = randint(0,3)
 unlock = False
@@ -367,10 +386,10 @@ if isfile("box.db"):
         print("\nThere is a save file.\nDo you want to [L]oad it or [S]tart a new name?")
         option = input("> ")
         if option in ("S","s"):
-            box.append(monster(randomgene(),0,namegen(),age=2))
-            box.append(monster(randomgene(),1,namegen(),age=2))
-            box.append(monster(randomgene(),0,namegen(),age=2))
-            box.append(monster(randomgene(),1,namegen(),age=2))
+            box.append(monster(randomgene(sex=0),namegen(),age=2))
+            box.append(monster(randomgene(sex=1),namegen(),age=2))
+            box.append(monster(randomgene(sex=0),namegen(),age=2))
+            box.append(monster(randomgene(sex=1),namegen(),age=2))
             break
         elif option in ("L","l"):
             with shelve.open('box') as savefile:
@@ -388,10 +407,10 @@ if isfile("box.db"):
                     box.append(null)
             break
 else:
-    box.append(monster(randomgene(),0,namegen(),age=2))
-    box.append(monster(randomgene(),1,namegen(),age=2))
-    box.append(monster(randomgene(),0,namegen(),age=2))
-    box.append(monster(randomgene(),1,namegen(),age=2))
+    box.append(monster(randomgene(0),namegen(),age=2))
+    box.append(monster(randomgene(1),namegen(),age=2))
+    box.append(monster(randomgene(0),namegen(),age=2))
+    box.append(monster(randomgene(1),namegen(),age=2))
 
 while True:
     displaybox(box)
@@ -401,19 +420,24 @@ Select your action:
 1: Visit your Monster Storage.
 2: Visit the Breeding Bays.
 3: Visit the Exhibition Stage (%s).
+4: Visit the Training Fields.
 5: Visit the Market. [WIP]
 6: End the Month."""%(money,statname[stagetarget]))
     if save == True:
-        print("R: Record your progress. [WIP]")
+        print("R: Record your progress.\nYou can only save right at the start of a month.")
     command = input("> ")
     if command == "1":
+        save = False
         inspect(box)
     elif command == "2":
         save = False
-        checkbays(box,bays)
+        checkbays(box,bays,sell=True)
     elif command == "3":
         save = False
         exhibit(box,stage,stagetarget)
+    elif command == "4":
+        save = False
+        checkbays(box,train,label=True)
     elif command in ("6","0"):
         print()
         save = True
@@ -425,6 +449,13 @@ Select your action:
                 box.append(bays[i].pop(0))
             if baby != None:
                     box.append(baby)
+        for i in range(0,len(train)):
+            if len(train[i]) != 0:
+                for j in train[i]:
+                    j.train(i)
+                    print("%s improved their %s."%(j.name,statname[i]))
+                    box.append(j)
+        train = [[],[],[],[]]
         if len(stage) != 0:
             runexhibit(stage,stagetarget)
             box+=stage
