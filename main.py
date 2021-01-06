@@ -15,7 +15,7 @@ class monster(object):
         elif self.sex==1:
             icon = "F"
         else:
-            icon = "I"
+            icon = "S"
         if self.color==0:
             cicon = "r"
         elif self.color==1:
@@ -38,7 +38,7 @@ class monster(object):
             self.color = self.genes[4][1]
         self.stats[self.color]+=1
         self.sex = self.genes[5][0] % 2
-        if self.genes[5][0] == 1000:
+        if self.genes[5][0] > 999:
             self.sex=2
     def rename(self):
         print("\nWhat should %s's new name be?\nLeave blank to cancel."%(self.name))
@@ -58,7 +58,7 @@ class monster(object):
         elif self.sex==1:
             icon = "Female"
         else:
-            icon = "Intersex"
+            icon = "Split"
         if self.color==0:
             cicon = "Red; +1 Force"
         elif self.color==1:
@@ -182,6 +182,8 @@ def displaybox(box):
     print()
     for i in range(0,len(box)):
         print(str(i+1)+": "+str(box[i]))
+    if len(box)==0:
+        print("No monsters available.")
     print()
 
 def namegen():
@@ -209,11 +211,13 @@ def randomgene(sex=None):
     genes[4][2]=genes[4][randint(0,1)]
     for i in range(0,4):
         genes[5][i]=randint(100,999)
-    if sex != None and genes[5][0] % 2 == sex:
+    if sex != None and genes[5][0] % 2 != sex:
         if genes[5][0] == 999:
             genes[5][0]=100
         else:
             genes[5][0]+=1
+    if sex == 2:
+        genes[5][0]=1000+randint(0,9)
     return genes
 
 def inspect(box):
@@ -422,6 +426,7 @@ Select your action:
 3: Visit the Exhibition Stage (%s).
 4: Visit the Training Fields.
 5: Visit the Market. [WIP]
+6: Visit the Transformation Pool. [WIP]
 6: End the Month."""%(money,statname[stagetarget]))
     if save == True:
         print("R: Record your progress.\nYou can only save right at the start of a month.")
