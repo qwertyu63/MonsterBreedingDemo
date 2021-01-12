@@ -15,6 +15,7 @@ class monster(object):
         self.genstats()
         self.timestamp = time()
     def __str__(self):
+        self.genstats()
         icons=[["M","F"],
         ["Red","Gre","Blu","Yel","Pur"],
         ["Dog", "Brd", "Fsh", "Cat"]]
@@ -160,6 +161,17 @@ class monster(object):
             return price
         else:
             return None
+    def injure(self):
+        roll=[randint(0,3),randint(0,2)]
+        if self.genes[roll[0]][roll[1]]!=0:
+            self.genes[roll[0]][roll[1]]-=1
+        else:
+            roll=[randint(0,3),randint(0,2)]
+            if self.genes[roll[0]][roll[1]]!=0:
+                self.genes[roll[0]][roll[1]]-=1
+            else:
+                return
+        print("%s's %s has been weakened by injury."%(self.name,statnames[roll[0]]))
 
 class GayMon(Exception):
     pass
@@ -171,10 +183,11 @@ class AddFail(Exception):
     pass
 
 class bay(object):
-    def __init__(self,name,size=2,unlock=None):
+    def __init__(self,name,size=2,unlock=None,hide=False):
         self.name=name
         self.size=size
         self.store=[]
+        self.hide=hide
         self.breedOK= True if unlock=="Breed" else False
         self.stageOK= True if unlock=="Stage" else False
     def __str__(self):
@@ -204,7 +217,7 @@ class bay(object):
         target = input("> ")
         return self.pullmonster(target)
     def accessbay(self,box):
-        print(self)
+        if not self.hide: print(self)
         print(box)
         print("Input the ID you want to add to the %s. \nInput 0 to exit the %s."%(self.name,self.name))
         if len(self.store)!=0:
@@ -297,14 +310,39 @@ def namegen():
 def sortmon(e):
     return e.timestamp
 
-def displaybox(box):
-    box.sort(key=sortmon)
-    print("Available Monsters:")
-    for i in range(0,len(box.store)):
-        print(str(i+1)+": "+str(box.store[i]))
-    if len(box.store)==0:
-        print("No monsters available.")
-    print()
+def wildhunt(box,hospital):
+    while True:
+        print(box)
+        print("Input the ID you want to send into the Forest. \nInput 0 to exit the Forest.")
+        target = input("> ")
+        if target in ("0",""):
+            return True
+        else:
+            try:
+                troop = box.pullmonster(target)
+                break
+            except PullFail:
+                pass
+    battle = randint(0,3)
+    injury = True if battle<2 else False
+    success = True if battle>0 else False
+    new = monster(None,["R",None]) if success else None
+    messages=["%s found another monster, but was injured.\nThe other monster got away."%(troop.name),
+    "%s found another monster, but was injured.\nThe other monster returned with them."%(troop.name),
+    "%s found another monster and brought them back."%(troop.name),
+    "%s found another monster and brought them back."%(troop.name)]
+    print("\n"+messages[battle])
+#    if injury:
+#        hospital.addmon(troop,report=False)
+#    if not injury:
+#        box.addmon(troop,report=False)
+    if injury: troop.injure()
+    box.addmon(troop,report=False)
+    if success:
+        box.addmon(new,report=False)
+        print("The new monster is named %s."%(new.name))
+        print(new)
+    input()
 
 from random import randint
 from time import time
@@ -321,8 +359,12 @@ def clear():
     else:
         _ = system('clear')
 
+statnames=["Force","Speed","Brain","Charm"]
+
 box = bay("Main Storage", size=-1)
 cave = bay("Breeding Cavern", unlock="Breed")
+stage = bay("Performance Stage",size=3,unlock="Stage")
+hospital = bay("Hospital",size=-1,unlock="Hospital")
 money = 10
 
 newfile=True
@@ -362,6 +404,7 @@ while loop:
     print("""Where do you want to go?
     1: Main Storage
     2: Breeding Cavern
+    3: The Forest
     9: Records Room
 You have $%i."""%(money))
     dest = input("> ")
@@ -371,13 +414,18 @@ You have $%i."""%(money))
             check=box.inspectmon()
         elif dest == "2":
             check=cave.accessbay(box)
+        elif dest == "3":
+            check=wildhunt(box,hospital)
         elif dest == "9":
-            print("Do you want to save your game?\nInput Y for yes.\nAny other input cancels.")
+            print("Do you want to save your game?\nAll monsters will return to Main Storage.")
+            print("Input Y for yes.\nAny other input cancels.")
             savechoice = input("> ")
             if savechoice in ("y","Y"):
+                while len(cave.store)!=0:
+                    box.addmon(cave.store.pop(),report=False)
                 with shelve.open('save') as savefile:
-                    savefile["limit"]=str(len(box.store))
                     savefile["money"]=str(money)
+                    savefile["limit"]=str(len(box.store))
                     for i in range(len(box.store)):
                         savefile[str(i)]=box.store[i].savemon()
                 print("Your records have been updated.")
