@@ -22,11 +22,12 @@ class monster(object):
         icon=icons[0][self.sex]
         cicon=icons[1][self.color]
         sicon=icons[2][self.style]
-        return "%s (%s %s %s) F%i S%i B%i C%i"%(self.name,icon,cicon,sicon,self.stats[0],self.stats[1],self.stats[2],self.stats[3])
+        injure = "Hurt" if self.genes[7][1]==1 else ""
+        return "%s (%s %s %s) F%i S%i B%i C%i %s"%(self.name,icon,cicon,sicon,self.stats[0],self.stats[1],self.stats[2],self.stats[3],injure)
     def genstats(self):
         self.stats=[0,0,0,0]
         for i in range(0,4):
-            self.stats[i]=sum(self.genes[i])
+            self.stats[i]=sum(self.genes[i])-self.genes[7][1]
         if self.genes[4][0]==self.genes[4][2]:
             self.color = self.genes[4][0]
         else:
@@ -65,6 +66,8 @@ class monster(object):
             block+="%s: %i (%i%i%i) [%s]\n"%(statnames[i],self.stats[i],self.genes[i][0],self.genes[i][1],self.genes[i][2],colorgene[2][i])
         block+="Color: %s (%s)\n"%(cicon,colorgene[0])
         block+="Style: %s (%s)"%(sicon,colorgene[1])
+        if self.genes[7][1]==1:
+            block+="\nInjured."
         return block
     def savemon(self):
         """Converts the monsters stats into a tuple for shelving."""
@@ -80,7 +83,7 @@ class monster(object):
     def loadmon(self, save):
         """Restores a shelved monster."""
         self.genes=[[0,0,0],[0,0,0],[0,0,0],
-        [0,0,0],[0,0,0],[0,0,0],[0,0,0,0],[0]]
+        [0,0,0],[0,0,0],[0,0,0],[0,0,0,0],[0,1]]
         save = list(save)
         self.name=save.pop(0)
         for i in range(0,len(save)):
@@ -92,7 +95,7 @@ class monster(object):
     def randomize(self,sex=None):
         """Randomly generates a monster. The sex can be specified with a 0 or 1."""
         genes=[[0,0,0],[0,0,0],[0,0,0],
-        [0,0,0],[0,0,0],[0,0,0],[0,0,0,0],[0]]
+        [0,0,0],[0,0,0],[0,0,0],[0,0,0,0],[0,0]]
         for i in range(0,4):
             for j in range(0,3):
                 genes[i][j]=randint(1,3)
@@ -110,7 +113,7 @@ class monster(object):
     def breed(self,parent):
         """Creates the offspring of the monster calling this fuction and the one passed in."""
         if self.sex==0 and parent.sex==1:
-            genes=[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0,0],[0]]
+            genes=[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0,0],[0,0]]
             limit=5
             for i in range(0,6):
                 genes[i][0]=parent.genes[i][randint(0,2)]
@@ -144,13 +147,26 @@ class monster(object):
     def inspection(self):
         clear()
         print(self.fullprint())
-        print("\nInput R to rename the monster.\nInput S to sell the monster.\nAny other input cancels.")
+        print("\nInput R to rename %s.\nInput S to sell %s."%(self.name,self.name))
+        if self.genes[7][1]==1:
+            print("Input H to heal %s's injuries ($10)."%(self.name))
+        print("Any other input cancels.")
         hold = input("> ")
         if hold in ("r","R"):
             self.rename()
-        if hold in ("s","S"):
+        elif hold in ("s","S"):
             sold = self.sell()
             return sold
+        elif hold in ("h","H") and self.genes[7][1]==1:
+            global money
+            if money >= 10:
+                money-=10
+                self.genes[7][1]=0
+                print("%s has been healed."%(self.name))
+            else:
+                print("You don't have $10.")
+            input()
+            self.inspection()
     def sell(self):
         price=sum(self.stats)//2
         print("\nAre you sure you want to sell %s?\nYou'll get $%i for them.\nInput Y to confirm.\nAny other input cancels."%(self.name,price))
@@ -162,16 +178,8 @@ class monster(object):
         else:
             return None
     def injure(self):
-        roll=[randint(0,3),randint(0,2)]
-        if self.genes[roll[0]][roll[1]]!=0:
-            self.genes[roll[0]][roll[1]]-=1
-        else:
-            roll=[randint(0,3),randint(0,2)]
-            if self.genes[roll[0]][roll[1]]!=0:
-                self.genes[roll[0]][roll[1]]-=1
-            else:
-                return
-        print("%s's %s has been weakened by injury."%(self.name,statnames[roll[0]]))
+        self.genes[7][1]=1
+        self.genstats()
 
 class GayMon(Exception):
     pass
@@ -224,6 +232,8 @@ class bay(object):
             print("Input R to remove monsters.")
         if len(self.store)==2 and self.breedOK:
             print("Input B to breed monsters.")
+        if len(self.store)!=0 and self.stageOK:
+            print("Input S to put on a show.")
         target = input("> ")
         if target in ("0",""):
             return True
@@ -234,6 +244,11 @@ class bay(object):
                 pass
         elif target in ("b","B") and len(self.store)==2 and self.breedOK:
             box.store+=self.breedmon()
+            input()
+        elif target in ("s","S") and len(self.store)!=0 and self.stageOK:
+            dump = self.holdshow(box)
+            if dump != None:
+                box.store+=dump
             input()
         else:
             try:
@@ -256,6 +271,26 @@ class bay(object):
                 print("%s and %s are the same sex.\nThey can't have offspring."%(self.store[0].name,self.store[1].name))
         hold, self.store = self.store, []
         return hold
+    def holdshow(self,box):
+        while True:
+            clear()
+            print(self)
+            print("Shows:\n1: Force\n2: Speed\n3: Brain\n4: Charm\n")
+            print("What kind of show do you want to put on?\nInput 0 to cancel.")
+            show=input("> ")
+            if show == 0:
+                return None
+            elif show in ("1","2","3","4"):
+                show = int(show)-1
+                skill = 0
+                for i in range(0,len(self.store)):
+                    skill+=self.store[i].stats[show]
+                payout = (skill//5)*2
+                print("Your show total is %i.\nYou make $%i"%(skill,payout))
+                global money
+                money+=payout
+                hold, self.store = self.store, []
+                return hold
     def inspectmon(self):
         print(self)
         print("Input the ID you want to inspect.\nInput 0 to exit.")
@@ -274,7 +309,7 @@ class bay(object):
         if target.isnumeric():
             goal = int(target)-1
             if goal in range(0,len(box.store)):
-                return box.store.pop(goal)
+                return self.store.pop(goal)
         raise PullFail
 
 def colorgenes(genes):
@@ -310,8 +345,9 @@ def namegen():
 def sortmon(e):
     return e.timestamp
 
-def wildhunt(box,hospital):
+def wildhunt(box):
     while True:
+        clear()
         print(box)
         print("Input the ID you want to send into the Forest. \nInput 0 to exit the Forest.")
         target = input("> ")
@@ -320,28 +356,29 @@ def wildhunt(box,hospital):
         else:
             try:
                 troop = box.pullmonster(target)
-                break
+                if troop.genes[7][1]==1:
+                    print("%s is injured.\nThey can't go to the Forest."%(troop.name))
+                    box.addmon(troop,report=False)
+                    input()
+                else:
+                    break
             except PullFail:
                 pass
     battle = randint(0,3)
-    injury = True if battle<2 else False
-    success = True if battle>0 else False
-    new = monster(None,["R",None]) if success else None
+    new = monster(None,["R",None]) if battle!=0 else None
     messages=["%s found another monster, but was injured.\nThe other monster got away."%(troop.name),
-    "%s found another monster, but was injured.\nThe other monster returned with them."%(troop.name),
     "%s found another monster and brought them back."%(troop.name),
-    "%s found another monster and brought them back."%(troop.name)]
+    "%s found another monster and brought them back."%(troop.name),
+    "%s found another monster and brought them back.\nThe other monster was injured in the process."%(troop.name)]
     print("\n"+messages[battle])
-#    if injury:
-#        hospital.addmon(troop,report=False)
-#    if not injury:
-#        box.addmon(troop,report=False)
-    if injury: troop.injure()
-    box.addmon(troop,report=False)
-    if success:
+    if battle==0:
+        troop.injure()
+    else:
+        if battle==3: new.injure()
         box.addmon(new,report=False)
-        print("The new monster is named %s."%(new.name))
+        print("\nThe new monster is named %s."%(new.name))
         print(new)
+    box.addmon(troop,report=False)
     input()
 
 from random import randint
@@ -364,7 +401,6 @@ statnames=["Force","Speed","Brain","Charm"]
 box = bay("Main Storage", size=-1)
 cave = bay("Breeding Cavern", unlock="Breed")
 stage = bay("Performance Stage",size=3,unlock="Stage")
-hospital = bay("Hospital",size=-1,unlock="Hospital")
 money = 10
 
 newfile=True
@@ -405,6 +441,7 @@ while loop:
     1: Main Storage
     2: Breeding Cavern
     3: The Forest
+    4: The Performance Stage
     9: Records Room
 You have $%i."""%(money))
     dest = input("> ")
@@ -415,7 +452,9 @@ You have $%i."""%(money))
         elif dest == "2":
             check=cave.accessbay(box)
         elif dest == "3":
-            check=wildhunt(box,hospital)
+            check=wildhunt(box)
+        elif dest == "4":
+            check=stage.accessbay(box)
         elif dest == "9":
             print("Do you want to save your game?\nAll monsters will return to Main Storage.")
             print("Input Y for yes.\nAny other input cancels.")
