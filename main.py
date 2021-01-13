@@ -291,12 +291,25 @@ class bay(object):
                 money+=payout
                 hold, self.store = self.store, []
                 return hold
-    def inspectmon(self):
+    def inspectmon(self,buy=False):
         print(self)
-        print("Input the ID you want to inspect.\nInput 0 to exit.")
+        print("Input the ID you want to inspect.")
+        if buy: print("Input B to buy a new monster for $10.")
+        print("Input 0 to exit.")
         target = input("> ")
         if target in ("0",""):
             return True
+        elif target in ("b","B"):
+            global money
+            if money >= 10:
+                money-=10
+                new=monster(None,["R",None])
+                print("You bought %s for $10."%(new.name))
+                print(new)
+                self.addmon(new,report=False)
+            else:
+                print("You don't have $10.")
+            input()
         else:
             try:
                 hold = self.pullmonster(target)
@@ -440,7 +453,6 @@ while loop:
     print("""Where do you want to go?
     1: Main Storage
     2: Breeding Cavern
-    3: The Forest
     4: The Performance Stage
     9: Records Room
 You have $%i."""%(money))
@@ -448,12 +460,10 @@ You have $%i."""%(money))
     while True:
         clear()
         if dest == "1":
-            check=box.inspectmon()
+            check=box.inspectmon(buy=True)
         elif dest == "2":
             check=cave.accessbay(box)
         elif dest == "3":
-            check=wildhunt(box)
-        elif dest == "4":
             check=stage.accessbay(box)
         elif dest == "9":
             print("Do you want to save your game?\nAll monsters will return to Main Storage.")
@@ -462,6 +472,8 @@ You have $%i."""%(money))
             if savechoice in ("y","Y"):
                 while len(cave.store)!=0:
                     box.addmon(cave.store.pop(),report=False)
+                while len(stage.store)!=0:
+                    box.addmon(stage.store.pop(),report=False)
                 with shelve.open('save') as savefile:
                     savefile["money"]=str(money)
                     savefile["limit"]=str(len(box.store))
