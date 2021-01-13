@@ -9,3 +9,6 @@ The beating heart of any monster farm, sending two monsters into the caverns all
 
 ## The Performance Stage:
 The main use for your monsters, putting them on stage to put on a show. Once you have monsters on stage, you can hold a show and select a stat for them to show off. Up to three monsters can be on stage at once.
+
+## The Records Room:
+In the records room, you can save and close the game. Once implemented, you will also be able to check what trophies you have been awarded here, but you can't get trophies yet, so...

@@ -453,8 +453,8 @@ while loop:
     print("""Where do you want to go?
     1: Main Storage
     2: Breeding Cavern
-    4: The Performance Stage
-    9: Records Room
+    3: The Performance Stage
+    0: Records Room
 You have $%i."""%(money))
     dest = input("> ")
     while True:
@@ -465,11 +465,12 @@ You have $%i."""%(money))
             check=cave.accessbay(box)
         elif dest == "3":
             check=stage.accessbay(box)
-        elif dest == "9":
-            print("Do you want to save your game?\nAll monsters will return to Main Storage.")
-            print("Input Y for yes.\nAny other input cancels.")
+        elif dest == "0":
+            print("Do you want to save or quit?")
+            print("Input S to save.\nInput X to close the game.\nAny other input cancels.")
             savechoice = input("> ")
-            if savechoice in ("y","Y"):
+            if savechoice in ("s","S"):
+                print("All monsters have returned to Main Storage.")
                 while len(cave.store)!=0:
                     box.addmon(cave.store.pop(),report=False)
                 while len(stage.store)!=0:
@@ -479,10 +480,11 @@ You have $%i."""%(money))
                     savefile["limit"]=str(len(box.store))
                     for i in range(len(box.store)):
                         savefile[str(i)]=box.store[i].savemon()
-                print("Your records have been updated.")
-            print("\nInput X to quit the game.\nAny other input returns.")
-            breaker = input("> ")
-            if breaker in ("x","X"):
+                print("Your records have been updated.\n\nDo you want to close the game?\nInput X for yes.\nAny other input cancels.")
+                breaker=input("> ")
+                if breaker in ("x","X"):
+                   loop=False
+            elif savechoice in ("x","X"):
                 loop=False
             break
         else:
