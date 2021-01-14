@@ -1,3 +1,5 @@
+testing = False
+
 class monster(object):
     def __init__(self, genes, name):
         self.color = None
@@ -18,7 +20,7 @@ class monster(object):
         self.genstats()
         icons=[["F","M","S"],
         ["Red","Gre","Blu","Yel","Pur"],
-        ["Dog", "Cat", "Bun", "Mou"]]
+        ["Dog", "Cat", "Bun", "Mou", "Wol", "Lio"]]
         icon=icons[0][self.sex]
         cicon=icons[1][self.color]
         sicon=icons[2][self.style]
@@ -36,10 +38,14 @@ class monster(object):
             self.style = self.genes[5][0]
         else:
             self.style = self.genes[5][1]
-        if self.color!=self.style:
-            if self.color!=5:
-                self.stats[self.color]=ceil(self.stats[self.color]*0.75)
-            self.stats[self.style]=ceil(self.stats[self.style]*1.25)
+        if self.color!=(self.style%4):
+            if self.color!=4:
+                self.stats[self.color]=self.stats[self.color]*0.75
+            self.stats[self.style%4]=self.stats[self.style%4]*1.25
+        if self.style in (4,5):
+            self.stats[self.style-2]=self.stats[self.style-2]*1.25
+        for i in self.stats:
+            i=ceil(i)
         self.sex = self.genes[7][0]+self.genes[7][1]
     def rename(self):
         print("\nWhat should %s's new name be?\nLeave blank to cancel."%(self.name))
@@ -55,7 +61,8 @@ class monster(object):
         ["Red (-For)","Green (-Spd)",
         "Blue (-Bra)","Yellow (-Cha)","Purple"],
         ["Dog (+For)", "Cat (+Spd)", 
-        "Bunny (+Bra)", "Mouse (+Cha)"]]
+        "Bunny (+Bra)", "Mouse (+Cha)",
+        "Wolf (+For, +Bra)", "Lion (+Spd, +Cha)"]]
         icon=icons[0][self.sex]
         cicon=icons[1][self.color]
         sicon=icons[2][self.style]
@@ -125,7 +132,7 @@ class monster(object):
                 potential=min(max(genes[i])+1,limit)
                 genes[i][2]=randint(1,potential)
             genes[4][2]=genes[4][randint(0,1)]
-            genes[5][2]=genes[6][randint(0,1)]
+            genes[5][2]=genes[5][randint(0,1)]
             genes[6][0]=parent.genes[5][0]
             genes[6][1]=self.genes[6][1]
             genes[6][2]=self.genes[6][2]
@@ -202,7 +209,7 @@ class monster(object):
                print("%s's %s improves, but their %s suffers as a result."%(self.name,statnames[plus[0]],statnames[minus[0]]))
                break
             tries-=1
-        if randint(0,4)==0:
+        if randint(0,4)==0 or testing:
             print("%s suffered some side effects."%(self.name))
             self.sideeffect()
             tries=1
@@ -223,11 +230,18 @@ class monster(object):
             self.genes[4][1]=self.color
             self.genes[4][2]=4
         elif effect == 2:
-            print("Something cool happens!")
-            #PUT SOMEHING HERE!
-            pass
+            if self.style in (0,1):
+                print("They got a bit bigger!")
+                self.genes[5][0]=self.style
+                self.genes[5][1]=self.style
+                self.genes[5][2]=self.style+4
+            else:
+                print("They changed style!")
+                shift=[0,1,2,3]
+                shift.remove(self.style)
+                self.style=shift[randint(0,(len(shift)-1))]
         elif effect == 3:
-            print("They seem to have suffered some injury.")
+            print("They seem to have suffered injury.")
             self.injure()
 
 class GayMon(Exception):
@@ -334,11 +348,19 @@ class bay(object):
                 skill = 0
                 for i in range(0,len(self.store)):
                     skill+=self.store[i].stats[show]
-                payout = (skill//10)*5
-                print("Your show total is %i."%(skill))
+                if len(self.store) == 2:
+                    for i in range(0,4):
+                        if self.store[0].genes[6][i]==self.store[1].genes[6][i]:
+                            skill+=2
+                payout = (skill//4)*5
                 print("You made $%i in ticket sales."%(payout))
                 global money
                 money+=payout
+                tier = min(4, int(skill/4)-2)
+                global awards
+                if tier > awards[show]:
+                    print("You also earned a %s of %s."%(awardnames[int(skill/4)-2],statnames[show]))
+                    awards[show] = tier
                 hold, self.store = self.store, []
                 return hold
     def inspectmon(self,buy=False):
@@ -379,7 +401,7 @@ def colorgenes(genes):
     """Converts a monsters gene numbers into letters for display"""
     letters=["","","",""]
     cletter=["R","G","B","Y","P"]
-    sletter=["D","C","B","M"]
+    sletter=["D","C","B","M","W","L"]
     sexletter=["X","Y"]
     bletter=ascii_uppercase+"0123456789"
     for i in genes[4]:
@@ -462,25 +484,26 @@ def mutatepool(box):
             return True
         else:
             try:
-                poolmon = box.pullmonster(target)
-                clear()
-                print(poolmon)
-                print("\nStats:\n1: Force\n2: Speed\n3: Brain\n4: Charm\n")
-                print("What stat do you want to improve? \nAnother stat will suffer. \nInput 0 to cancel.")
-                stattarget=input("> ")
-                if stattarget == 0:
-                    box.addmon(poolmon,report=False)
-                    return None
-                elif stattarget in ("1","2","3","4"):
-                    money-=5
-                    stattarget = int(stattarget)-1
-                    success = poolmon.mutate(stattarget)
-                    if not success:
-                        money+=5
-                        print("Your $5 has been refunded.")
-                    box.addmon(poolmon,report=False)
-                    input()
-                    return None
+                while True:
+                    poolmon = box.pullmonster(target)
+                    clear()
+                    print(poolmon)
+                    print("\nStats:\n1: Force\n2: Speed\n3: Brain\n4: Charm\n")
+                    print("What stat do you want to improve? \nAnother stat will suffer. \nInput 0 to cancel.")
+                    stattarget=input("> ")
+                    if stattarget in ("0",""):
+                        box.addmon(poolmon,report=False)
+                        return None
+                    elif stattarget in ("1","2","3","4"):
+                        money-=5
+                        stattarget = int(stattarget)-1
+                        success = poolmon.mutate(stattarget)
+                        if not success:
+                            money+=5
+                            print("Your $5 has been refunded.")
+                        box.addmon(poolmon,report=False)
+                        input()
+                        return None
             except PullFail:
                 pass
 
@@ -503,8 +526,18 @@ statnames=["Force","Speed","Brain","Charm"]
 
 box = bay("Main Storage", size=-1)
 cave = bay("Breeding Cavern", unlock="Breed")
-stage = bay("Performance Stage",size=3,unlock="Stage")
+stage = bay("Performance Stage",unlock="Stage")
 money = 10
+
+awards = [0,0,0,0]
+awardnames=[None,"Bronze Medal","Silver Star","Gold Cup","Master Banner"]
+def printawards(awardlist):
+    message = "Awards:\n"
+    for i, j in zip(range(0,4),awards):
+        if j != 0:
+            message+="%s of %s\n"%(awardnames[j],statnames[i])
+    if message == "Awards:\n": message+="None.\n"
+    print(message)
 
 newfile=True
 if isfile("save.db"):
@@ -513,7 +546,7 @@ if isfile("save.db"):
         print("Monster Farm:\nby Nicholas Fletcher\n")
         print("Input L to load your save file.\nInput N to start a new game.\nInput D to delete your save file.")
         select=input("> ")
-        if select in ("l","L"):
+        if select in ("l","L",""):
             newfile=False
             with shelve.open('save') as savefile:
                 money=int(savefile["money"])
@@ -559,6 +592,7 @@ You have $%i."""%(money))
         elif dest == "4":
             check=mutatepool(box)
         elif dest == "0":
+            printawards(awards)
             print("Do you want to save or quit?")
             print("Input S to save.\nInput X to close the game.\nAny other input cancels.")
             savechoice = input("> ")
@@ -580,7 +614,7 @@ You have $%i."""%(money))
             elif savechoice in ("x","X"):
                 loop=False
             break
-        elif dest == "100":
+        elif dest == "100" and testing:
             money+=100
             break
         else:
