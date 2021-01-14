@@ -16,18 +16,18 @@ class monster(object):
         self.timestamp = time()
     def __str__(self):
         self.genstats()
-        icons=[["M","F"],
+        icons=[["F","M","S"],
         ["Red","Gre","Blu","Yel","Pur"],
-        ["Dog", "Brd", "Fsh", "Cat"]]
+        ["Dog", "Cat", "Bun", "Mou"]]
         icon=icons[0][self.sex]
         cicon=icons[1][self.color]
         sicon=icons[2][self.style]
-        injure = "Hurt" if self.genes[7][1]==1 else ""
+        injure = "Hurt" if self.genes[7][2]==1 else ""
         return "%s (%s %s %s) F%i S%i B%i C%i %s"%(self.name,icon,cicon,sicon,self.stats[0],self.stats[1],self.stats[2],self.stats[3],injure)
     def genstats(self):
         self.stats=[0,0,0,0]
         for i in range(0,4):
-            self.stats[i]=sum(self.genes[i])-self.genes[7][1]
+            self.stats[i]=sum(self.genes[i])-self.genes[7][2]
         if self.genes[4][0]==self.genes[4][2]:
             self.color = self.genes[4][0]
         else:
@@ -40,7 +40,7 @@ class monster(object):
             if self.color!=5:
                 self.stats[self.color]=ceil(self.stats[self.color]*0.75)
             self.stats[self.style]=ceil(self.stats[self.style]*1.25)
-        self.sex = self.genes[7][0]
+        self.sex = self.genes[7][0]+self.genes[7][1]
     def rename(self):
         print("\nWhat should %s's new name be?\nLeave blank to cancel."%(self.name))
         newname = input("> ")
@@ -51,22 +51,22 @@ class monster(object):
     def fullprint(self):
         """Prints all of the monsters stats, neatly formatted."""
         self.genstats()
-        icons=[["Male","Female"],
+        icons=[["Female","Male","Split"],
         ["Red (-For)","Green (-Spd)",
         "Blue (-Bra)","Yellow (-Cha)","Purple"],
-        ["Dog (+For)", "Bird (+Spd)", 
-        "Fish (+Bra)", "Cat (+Cha)"]]
+        ["Dog (+For)", "Cat (+Spd)", 
+        "Bunny (+Bra)", "Mouse (+Cha)"]]
         icon=icons[0][self.sex]
         cicon=icons[1][self.color]
         sicon=icons[2][self.style]
         colorgene=colorgenes(self.genes)
         statnames=["Force","Speed","Brain","Charm"]
-        block="%s: %s\n"%(self.name,icon)
+        block="%s: %s (%s)\n"%(self.name,icon,colorgene[3])
         for i in range(0,4):
             block+="%s: %i (%i%i%i) [%s]\n"%(statnames[i],self.stats[i],self.genes[i][0],self.genes[i][1],self.genes[i][2],colorgene[2][i])
         block+="Color: %s (%s)\n"%(cicon,colorgene[0])
         block+="Style: %s (%s)"%(sicon,colorgene[1])
-        if self.genes[7][1]==1:
+        if self.genes[7][2]==1:
             block+="\nInjured."
         return block
     def savemon(self):
@@ -83,7 +83,7 @@ class monster(object):
     def loadmon(self, save):
         """Restores a shelved monster."""
         self.genes=[[0,0,0],[0,0,0],[0,0,0],
-        [0,0,0],[0,0,0],[0,0,0],[0,0,0,0],[0,1]]
+        [0,0,0],[0,0,0],[0,0,0],[0,0,0,0],[0,0,0]]
         save = list(save)
         self.name=save.pop(0)
         for i in range(0,len(save)):
@@ -93,9 +93,9 @@ class monster(object):
         self.genes=deepcopy(save)
         self.genstats()
     def randomize(self,sex=None):
-        """Randomly generates a monster. The sex can be specified with a 0 or 1."""
+        """Randomly generates a monster. The sex can be specified with a 0 (F), 1 (M) or 2 (S)."""
         genes=[[0,0,0],[0,0,0],[0,0,0],
-        [0,0,0],[0,0,0],[0,0,0],[0,0,0,0],[0,0]]
+        [0,0,0],[0,0,0],[0,0,0],[0,0,0,0],[0,0,0]]
         for i in range(0,4):
             for j in range(0,3):
                 genes[i][j]=randint(1,3)
@@ -106,21 +106,24 @@ class monster(object):
         for i in range(0,4):
             genes[6][i]=randint(0,35)
         if sex != None:
-            genes[7][0]=sex
+            print(sex)
+            sexrow=[[0,0],[0,1],[1,1]]
+            genes[7][0]=sexrow[sex][0]
+            genes[7][1]=sexrow[sex][1]
         else:
             genes[7][0]=randint(0,1)
+            genes[7][1]=0
         self.genes=deepcopy(genes)
     def breed(self,parent):
         """Creates the offspring of the monster calling this fuction and the one passed in."""
-        if self.sex==0 and parent.sex==1:
-            genes=[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0,0],[0,0]]
+        if self.sex in (0,2) and parent.sex==1:
+            genes=[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0,0],[0,0,0]]
             limit=5
             for i in range(0,6):
                 genes[i][0]=parent.genes[i][randint(0,2)]
                 genes[i][1]=self.genes[i][randint(0,2)]
                 potential=min(max(genes[i])+1,limit)
                 genes[i][2]=randint(1,potential)
-            genes[7][0]=randint(0,1)
             genes[4][2]=genes[4][randint(0,1)]
             genes[5][2]=genes[6][randint(0,1)]
             genes[6][0]=parent.genes[5][0]
@@ -128,6 +131,8 @@ class monster(object):
             genes[6][2]=self.genes[6][2]
             genes[6][3]=self.genes[6][3]
             genes[6][3]=parent.genes[6][randint(2,3)]
+            genes[7][0]=self.genes[7][randint(0,1)]
+            genes[7][1]=parent.genes[7][randint(0,1)]
             inbreeding=False
             for i in range(0,4):
                 if self.genes[6][i]==parent.genes[6][i]:
@@ -139,16 +144,16 @@ class monster(object):
                     genes[roll][randint(0,2)]=0
                     inbreeding=True
             return (monster(deepcopy(genes),namegen()),inbreeding)
-        elif self.sex==1 and parent.sex==0:
+        elif self.sex in (1,2) and parent.sex==0:
             # If the monster passed in is the female, we need to have them handle the function and return the result.
             return parent.breed(self)
-        else:
+        elif self.sex == parent.sex:
             raise GayMon
     def inspection(self):
         clear()
         print(self.fullprint())
         print("\nInput R to rename %s.\nInput S to sell %s."%(self.name,self.name))
-        if self.genes[7][1]==1:
+        if self.genes[7][2]==1:
             print("Input H to heal %s's injuries ($10)."%(self.name))
         print("Any other input cancels.")
         hold = input("> ")
@@ -157,18 +162,20 @@ class monster(object):
         elif hold in ("s","S"):
             sold = self.sell()
             return sold
-        elif hold in ("h","H") and self.genes[7][1]==1:
+        elif hold in ("h","H") and self.genes[7][2]==1:
             global money
-            if money >= 10:
-                money-=10
-                self.genes[7][1]=0
+            if money >= 5:
+                money-=5
+                self.genes[7][2]=0
                 print("%s has been healed."%(self.name))
             else:
-                print("You don't have $10.")
+                print("You don't have $5.")
             input()
             self.inspection()
     def sell(self):
-        price=sum(self.stats)//2
+        price=sum(self.stats)-18
+        price=price//3*5
+        if price<5: price=5
         print("\nAre you sure you want to sell %s?\nYou'll get $%i for them.\nInput Y to confirm.\nAny other input cancels."%(self.name,price))
         confirm = input("> ")
         if confirm in ("y","Y"):
@@ -178,8 +185,50 @@ class monster(object):
         else:
             return None
     def injure(self):
-        self.genes[7][1]=1
+        self.genes[7][2]=1
         self.genstats()
+    def mutate(self,target):
+        tries = 5
+        plus=[target,0]
+        minus=[0,0]
+        statroll=[0,1,2,3]
+        statroll.remove(target)
+        while tries != 0:            
+            plus[1]=randint(0,2)
+            minus[0]=statroll[randint(0,2)]
+            minus[1]=randint(0,2)
+            if self.genes[plus[0]][plus[1]] < self.genes[minus[0]][minus[1]]:
+               self.genes[plus[0]][plus[1]],self.genes[minus[0]][minus[1]] = self.genes[minus[0]][minus[1]],self.genes[plus[0]][plus[1]]
+               print("%s's %s improves, but their %s suffers as a result."%(self.name,statnames[plus[0]],statnames[minus[0]]))
+               break
+            tries-=1
+        if randint(0,4)==0:
+            print("%s suffered some side effects."%(self.name))
+            self.sideeffect()
+            tries=1
+        if tries == 0:
+            print("%s returns unchanged."%(self.name))
+            return False
+        else:
+            return True
+    def sideeffect(self):
+        effect = randint(0,3)
+        if effect == 0:
+            print("They are now both male and female.")
+            self.genes[7][0]=1
+            self.genes[7][1]=1
+        elif effect == 1:
+            print("Flecks of purple appear in their fur.")
+            self.genes[4][0]=self.color
+            self.genes[4][1]=self.color
+            self.genes[4][2]=4
+        elif effect == 2:
+            print("Something cool happens!")
+            #PUT SOMEHING HERE!
+            pass
+        elif effect == 3:
+            print("They seem to have suffered some injury.")
+            self.injure()
 
 class GayMon(Exception):
     pass
@@ -285,8 +334,9 @@ class bay(object):
                 skill = 0
                 for i in range(0,len(self.store)):
                     skill+=self.store[i].stats[show]
-                payout = (skill//5)*2
-                print("Your show total is %i.\nYou make $%i"%(skill,payout))
+                payout = (skill//10)*5
+                print("Your show total is %i."%(skill))
+                print("You made $%i in ticket sales."%(payout))
                 global money
                 money+=payout
                 hold, self.store = self.store, []
@@ -327,9 +377,10 @@ class bay(object):
 
 def colorgenes(genes):
     """Converts a monsters gene numbers into letters for display"""
-    letters=["","",""]
+    letters=["","","",""]
     cletter=["R","G","B","Y","P"]
-    sletter=["D","B","F","C"]
+    sletter=["D","C","B","M"]
+    sexletter=["X","Y"]
     bletter=ascii_uppercase+"0123456789"
     for i in genes[4]:
         letters[0]+=cletter[i]
@@ -337,6 +388,8 @@ def colorgenes(genes):
         letters[1]+=sletter[i]
     for i in genes[6]:
         letters[2]+=bletter[i]
+    letters[3]+=sexletter[genes[7][0]]
+    letters[3]+=sexletter[genes[7][1]]
     return letters
 
 def namegen():
@@ -369,7 +422,7 @@ def wildhunt(box):
         else:
             try:
                 troop = box.pullmonster(target)
-                if troop.genes[7][1]==1:
+                if troop.genes[7][2]==1:
                     print("%s is injured.\nThey can't go to the Forest."%(troop.name))
                     box.addmon(troop,report=False)
                     input()
@@ -393,6 +446,43 @@ def wildhunt(box):
         print(new)
     box.addmon(troop,report=False)
     input()
+
+def mutatepool(box):
+    while True:
+        clear()
+        print(box)
+        global money
+        if money < 5:
+            print("Sending a monster into the pool costs $5.\nYou can't afford it.")
+            input()
+            return True
+        print("Input the ID you want to send into the Mystic Pool.\nIt will cost $5.\nInput 0 to exit the Pool.")
+        target = input("> ")
+        if target in ("0",""):
+            return True
+        else:
+            try:
+                poolmon = box.pullmonster(target)
+                clear()
+                print(poolmon)
+                print("\nStats:\n1: Force\n2: Speed\n3: Brain\n4: Charm\n")
+                print("What stat do you want to improve? \nAnother stat will suffer. \nInput 0 to cancel.")
+                stattarget=input("> ")
+                if stattarget == 0:
+                    box.addmon(poolmon,report=False)
+                    return None
+                elif stattarget in ("1","2","3","4"):
+                    money-=5
+                    stattarget = int(stattarget)-1
+                    success = poolmon.mutate(stattarget)
+                    if not success:
+                        money+=5
+                        print("Your $5 has been refunded.")
+                    box.addmon(poolmon,report=False)
+                    input()
+                    return None
+            except PullFail:
+                pass
 
 from random import randint
 from time import time
@@ -454,6 +544,7 @@ while loop:
     1: Main Storage
     2: Breeding Cavern
     3: The Performance Stage
+    4: The Mystic Pool.
     0: Records Room
 You have $%i."""%(money))
     dest = input("> ")
@@ -465,6 +556,8 @@ You have $%i."""%(money))
             check=cave.accessbay(box)
         elif dest == "3":
             check=stage.accessbay(box)
+        elif dest == "4":
+            check=mutatepool(box)
         elif dest == "0":
             print("Do you want to save or quit?")
             print("Input S to save.\nInput X to close the game.\nAny other input cancels.")
@@ -486,6 +579,9 @@ You have $%i."""%(money))
                    loop=False
             elif savechoice in ("x","X"):
                 loop=False
+            break
+        elif dest == "100":
+            money+=100
             break
         else:
             break
