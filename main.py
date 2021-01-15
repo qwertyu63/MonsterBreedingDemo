@@ -9,7 +9,10 @@ class monster(object):
         self.sex = None
         if name[0] == "R":
             self.name = namegen()
-            self.randomize(name[1])
+            if len(name)>2:
+                self.randomize(name[1],name[2])
+            else:
+                self.randomize(name[1])
         else:
             self.name = name
         if name[0] == "L":
@@ -104,13 +107,13 @@ class monster(object):
                 save[i][j]=int(save[i][j])
         self.genes=deepcopy(save)
         self.genstats()
-    def randomize(self,sex=None):
+    def randomize(self,sex=None,limit=3):
         """Randomly generates a monster. The sex can be specified with a 0 (F), 1 (M) or 2 (S)."""
         genes=[[0,0,0],[0,0,0],[0,0,0],
         [0,0,0],[0,0,0],[0,0,0],[0,0,0,0],[0,0,0]]
         for i in range(0,4):
             for j in range(0,3):
-                genes[i][j]=randint(1,3)
+                genes[i][j]=randint(1,limit)
         for i in range(4,6):
             for j in range(0,2):
                 genes[i][j]=randint(0,3)
@@ -512,6 +515,31 @@ def mutatepool(box):
             except PullFail:
                 pass
 
+def battle(mon1,mon2):
+    score1=0
+    score2=0
+    roundscore=0
+    for i in range(0,4):
+        roundscore+=1
+        if mon1.stats[i]>mon2.stats[i]:
+            score1+=roundscore
+            roundscore=0
+        elif mon2.stats[i]>mon1.stats[i]:
+            score2+=roundscore
+            roundscore=0
+    roundscore+=1
+    if randint(0,1)==0:
+        score1+=roundscore
+    else:
+        score2+=roundscore
+    if score1>score2:
+        print("%s wins the battle, with %i points."%(mon1.name,score1))
+        return True
+    else:
+        print("%s wins the battle, with %i points."%(mon2.name,score2))
+        return False
+
+# Main gameplay code starts here.
 from random import randint
 from time import time
 from os import remove
@@ -534,13 +562,15 @@ cave = bay("Breeding Cavern", unlock="Breed")
 stage = bay("Performance Stage",unlock="Stage")
 money = 10
 
-awards = [0,0,0,0]
-awardnames=[None,"Bronze Medal","Silver Star","Gold Cup","Master Banner"]
+awards = [0,0,0,0,0]
+awardnames=[None,"Bronze Key","Silver Star","Gold Cup","Master Gem"]
 def printawards(awardlist):
     message = "Awards:\n"
     for i, j in zip(range(0,4),awards):
         if j != 0:
             message+="%s of %s\n"%(awardnames[j],statnames[i])
+    if awards[4] != 0:
+            message+="%s of Battle\n"%(awardnames[awards[4]])
     if message == "Awards:\n": message+="None.\n"
     print(message)
 
@@ -576,6 +606,19 @@ if newfile:
         gen=monster(None,["R",i%2])
         box.addmon(gen,report=False)
 clear()
+
+def rollcredits():
+    clear()
+    print("""Monster Farm:
+    Concept Design: Nicholas Fletcher
+    Game Design: Nicholas Fletcher
+    Sound Design: Nicholas Fletcher
+    Graphic Design: Nicholas Fletcher
+    Character Design: Nicholas Fletcher
+    Story Supervisor: Nicholas Fletcher
+    Lead Programmer: Nicholas Fletcher
+    Special Thanks: Nicholas Fletcher""")
+    input()
 
 loop=True
 while loop:
@@ -616,6 +659,7 @@ You have $%i."""%(money))
                         savefile["aw"+str(i)]=str(awards[i])
                     for i in range(len(box.store)):
                         savefile[str(i)]=box.store[i].savemon()
+                clear()
                 print("Your records have been updated.\n\nDo you want to close the game?\nInput X for yes.\nAny other input cancels.")
                 breaker=input("> ")
                 if breaker in ("x","X"):
@@ -625,6 +669,10 @@ You have $%i."""%(money))
             break
         elif dest == "100" and testing:
             money+=100
+            break
+        elif dest == "end":
+            rollcredits()
+            loop=False
             break
         else:
             break
