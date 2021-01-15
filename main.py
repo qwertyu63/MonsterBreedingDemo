@@ -441,42 +441,6 @@ def namegen():
 def sortmon(e):
     return e.timestamp
 
-def wildhunt(box):
-    while True:
-        clear()
-        print(box)
-        print("Input the ID you want to send into the Forest. \nInput 0 to exit the Forest.")
-        target = input("> ")
-        if target in ("0",""):
-            return True
-        else:
-            try:
-                troop = box.pullmonster(target)
-                if troop.genes[7][2]==1:
-                    print("%s is injured.\nThey can't go to the Forest."%(troop.name))
-                    box.addmon(troop,report=False)
-                    input()
-                else:
-                    break
-            except PullFail:
-                pass
-    battle = randint(0,3)
-    new = monster(None,["R",None]) if battle!=0 else None
-    messages=["%s found another monster, but was injured.\nThe other monster got away."%(troop.name),
-    "%s found another monster and brought them back."%(troop.name),
-    "%s found another monster and brought them back."%(troop.name),
-    "%s found another monster and brought them back.\nThe other monster was injured in the process."%(troop.name)]
-    print("\n"+messages[battle])
-    if battle==0:
-        troop.injure()
-    else:
-        if battle==3: new.injure()
-        box.addmon(new,report=False)
-        print("\nThe new monster is named %s."%(new.name))
-        print(new)
-    box.addmon(troop,report=False)
-    input()
-
 def mutatepool(box):
     while True:
         clear()
@@ -515,22 +479,29 @@ def mutatepool(box):
             except PullFail:
                 pass
 
-def battle(mon1,mon2):
+def fightbattle(mon1,mon2):
+    print("Battle! %s versus %s"%(mon1.name,mon2.name))
     score1=0
     score2=0
     roundscore=0
     for i in range(0,4):
         roundscore+=1
         if mon1.stats[i]>mon2.stats[i]:
+            print("%s: %s."%(statnames[i],mon1.name))
             score1+=roundscore
             roundscore=0
         elif mon2.stats[i]>mon1.stats[i]:
+            print("%s: %s."%(statnames[i],mon2.name))
             score2+=roundscore
             roundscore=0
+        else:
+            print("%s: draw."%(statnames[i]))
     roundscore+=1
     if randint(0,1)==0:
+        print("Luck: %s.\n"%(mon1.name))
         score1+=roundscore
     else:
+        print("Luck: %s.\n"%(mon2.name))
         score2+=roundscore
     if score1>score2:
         print("%s wins the battle, with %i points."%(mon1.name,score1))
@@ -538,6 +509,7 @@ def battle(mon1,mon2):
     else:
         print("%s wins the battle, with %i points."%(mon2.name,score2))
         return False
+    input()
 
 # Main gameplay code starts here.
 from random import randint
