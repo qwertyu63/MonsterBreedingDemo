@@ -26,6 +26,11 @@ class monster(object):
         sicon=icons[2][self.style]
         injure = "Hurt" if self.genes[7][2]==1 else ""
         return "%s (%s %s %s) F%i S%i B%i C%i %s"%(self.name,icon,cicon,sicon,self.stats[0],self.stats[1],self.stats[2],self.stats[3],injure)
+    def short(self):
+        self.genstats()
+        icons=[["Red","Green","Blue","Yellow","Purple"],
+        ["Dog", "Cat", "Bunny", "Mouse", "Wolf", "Lion"]]
+        return icons[0][self.color]+" "+icons[1][self.style]
     def genstats(self):
         self.stats=[0,0,0,0]
         for i in range(0,4):
@@ -554,6 +559,8 @@ if isfile("save.db"):
                     load = savefile[str(i)]
                     gen = monster(None,["L",load])
                     box.addmon(gen,report=False)
+                for i in range(0,4):
+                    awards[i]=int(savefile["aw"+str(i)])
             break
         elif select in ("n","N"):
             break
@@ -605,6 +612,8 @@ You have $%i."""%(money))
                 with shelve.open('save') as savefile:
                     savefile["money"]=str(money)
                     savefile["limit"]=str(len(box.store))
+                    for i in range(0,4):
+                        savefile["aw"+str(i)]=str(awards[i])
                     for i in range(len(box.store)):
                         savefile[str(i)]=box.store[i].savemon()
                 print("Your records have been updated.\n\nDo you want to close the game?\nInput X for yes.\nAny other input cancels.")
